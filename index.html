@@ -515,8 +515,8 @@ const sget=(st,k)=>{try{return window[st].getItem(k)}catch{return mem[st+k]??nul
 const sset=(st,k,v)=>{try{window[st].setItem(k,v)}catch{mem[st+k]=v}};
 const sdel=(st,k)=>{try{window[st].removeItem(k)}catch{delete mem[st+k]}};
 const DEFSET=()=>({dName:"",dTitle:"Transportation Director",dSig:"",aName:"",aTitle:"Aviation Unit Director",aSig:""});
-const blank=()=>({audit:[],chats:{},whitelist:[],staff:[],officers:[],accounts:{},records:[],violations:[],attempts:[],examCfg:{pass:24},pilots:[],settings:DEFSET()});
-const live=d=>{d.audit=d.audit||[];d.settings=Object.assign(DEFSET(),d.settings||{});d.violations=d.violations||[];d.attempts=d.attempts||[];d.examCfg=Object.assign({pass:24},d.examCfg||{});d.staff=d.staff||[];d.officers=d.officers||[];d.pilots=d.pilots||[];d.chats=d.chats||{};const now=Date.now();d.records.forEach(r=>{r.baseStatus=r.status;if(r.expiry&&r.status!=="Revoked"&&new Date(r.expiry+"T23:59:59")<now)r.status="Expired"});return d};
+const blank=()=>({audit:[],chats:{},whitelist:[],staff:[],officers:[],accounts:{},records:[],apps:[],violations:[],attempts:[],examCfg:{pass:24},pilots:[],settings:DEFSET()});
+const live=d=>{d.audit=d.audit||[];d.settings=Object.assign(DEFSET(),d.settings||{});d.violations=d.violations||[];d.attempts=d.attempts||[];d.examCfg=Object.assign({pass:24},d.examCfg||{});d.staff=d.staff||[];d.officers=d.officers||[];d.pilots=d.pilots||[];d.apps=d.apps||[];d.chats=d.chats||{};const now=Date.now();d.records.forEach(r=>{r.baseStatus=r.status;if(r.expiry&&r.status!=="Revoked"&&new Date(r.expiry+"T23:59:59")<now)r.status="Expired"});return d};
 /* ===== SHARED DATABASE + LOGIN (Firebase Firestore + Authentication) =====
    Every record, chat, etc. is its own small document (JSON stored as a string in field "j").
    Passwords are handled by Firebase Authentication - they are never stored in the database.
@@ -543,6 +543,7 @@ function shardsOf(c){const o={},put=(path,k,n,v,e)=>{o[path]={k:k,n:n||"",j:JSON
  const mail={};(c.records||[]).forEach(r=>{if(r.licenseNo)mail[lcn(r.licenseNo)]=r.email});
  (c.records||[]).forEach(r=>put("records/"+recId(r),"records","",r,r.email));
  (c.pilots||[]).forEach(x=>put("pilots/"+x.id,"pilots","",x));
+ (c.apps||[]).forEach(a=>put("apps/"+a.id,"apps","",a,a.email));
  ["violations","attempts"].forEach(k=>(c[k]||[]).forEach(x=>put(k+"/"+x.id,k,"",x,mail[lcn(x.licenseNo)])));
  Object.keys(c.chats||{}).forEach(n=>put("chats/"+mid(n),"chats",n,c.chats[n],n));
  (c.whitelist||[]).forEach(e=>put("wl/"+mid(e),"wl",e,{}));
@@ -555,9 +556,9 @@ function shardsOf(c){const o={},put=(path,k,n,v,e)=>{o[path]={k:k,n:n||"",j:JSON
  if(c.exam)put("cfg/exam","exam","",c.exam);
  if(c.faq&&c.faq.length)put("cfg/faq","faq","",c.faq);
  return o}
-function build(){const d=blank(),L={records:[],pilots:[],violations:[],attempts:[],audit:[]};
+function build(){const d=blank(),L={records:[],apps:[],pilots:[],violations:[],attempts:[],audit:[]};
  for(const id in SH){const s=SH[id];let v;try{v=JSON.parse(s.j)}catch{continue}
-  switch(s.k){case"records":case"pilots":case"violations":case"attempts":case"audit":L[s.k].push(v);break;
+  switch(s.k){case"records":case"apps":case"pilots":case"violations":case"attempts":case"audit":L[s.k].push(v);break;
    case"chats":d.chats[s.n]=v;break;case"wl":d.whitelist.push(s.n);break;case"staff":(v&&v.s==="viol"?d.officers:d.staff).push(s.n);break;
    case"acct":d.accounts[s.n]=v;break;case"settings":d.settings=v;break;case"examcfg":d.examCfg=v;break;case"exam":d.exam=v;break;case"faq":d.faq=v}}
  for(const k in L)d[k]=L[k].sort((a,b)=>(a.id||0)-(b.id||0));
@@ -577,9 +578,9 @@ const save=d=>{const c=JSON.parse(JSON.stringify(d));c.records.forEach(r=>{if(r.
 function stopSync(){UNSUB.forEach(f=>{try{f()}catch{}});UNSUB=[];SH={};DB=blank()}
 function startSync(role,email){stopSync();
  const C=n=>FS.collection(n),refs=[];
- if(role==="licensee")refs.push(C("records").where("e","==",email),C("attempts").where("e","==",email),C("violations").where("e","==",email),C("cfg"),FS.doc("chats/"+mid(email)),FS.doc("wl/"+mid(email)),FS.doc("acct/"+mid(email)));
+ if(role==="licensee")refs.push(C("records").where("e","==",email),C("attempts").where("e","==",email),C("violations").where("e","==",email),C("apps").where("e","==",email),C("cfg"),FS.doc("chats/"+mid(email)),FS.doc("wl/"+mid(email)),FS.doc("acct/"+mid(email)));
  else if(role==="officer")["records","violations","cfg","staff"].forEach(n=>refs.push(C(n)));
- else{["records","pilots","violations","attempts","chats","wl","staff","acct","cfg"].forEach(n=>refs.push(C(n)));if(role==="admin")refs.push(C("audit").orderBy("ts","desc").limit(500))}
+ else{["records","apps","pilots","violations","attempts","chats","wl","staff","acct","cfg"].forEach(n=>refs.push(C(n)));if(role==="admin")refs.push(C("audit").orderBy("ts","desc").limit(500))}
  return new Promise(res=>{let pending=refs.length,done=false;const one=()=>{if(!done&&--pending<=0){done=true;res()}};
   refs.forEach(ref=>{let first=true;
    UNSUB.push(ref.onSnapshot(snap=>{let remote=false;
@@ -613,6 +614,7 @@ async function resolveRole(u){const em=(u.email||"").toLowerCase();
   {const sd=await FS.doc("staff/"+mid(em)).get();if(sd.exists){let sc="";try{sc=JSON.parse(sd.data().j).s}catch{}const ro=sc==="viol"?"officer":"staff";await ensureAcct(em,ro);return{role:ro,email:em}}}
   if(dn==="PENDING_STAFF")return{err:"nostaff"};
   if((await FS.doc("wl/"+mid(em)).get()).exists){await ensureAcct(em,"licensee");return{role:"licensee",email:em}}
+  if(dn==="PENDING_NEW"){await FS.doc("wl/"+mid(em)).set({k:"wl",n:em,j:"{}",e:""});await ensureAcct(em,"licensee");try{await u.updateProfile({displayName:"DONE:"})}catch{}return{role:"licensee",email:em}}
   if(dn.indexOf("PENDING:")===0)return await claim(u,em,dn.slice(8));
   return{err:"notwl"}}catch(e){console.error(e);return{err:"net"}}}
 async function bootstrap(){
@@ -668,10 +670,10 @@ function signup(){
  const st=suMode==="staff";
  view(`<div class="auth"><div class="box glass in" id="f">
  <img class="logo" src="${LOGO}" alt="" style="width:84px;height:84px">
- <h1>Create ${st?"staff":"licensee"} account</h1><p class="sub">${st?"Your Gmail must be approved by the administrator":"Use your Gmail and your driver’s license number"}</p>
+ <h1>Create ${st?"staff":"licensee"} account</h1><p class="sub">${st?"Your Gmail must be approved by the administrator":"Use your Gmail. No license number needed."}</p>
  <div class="glass tabs" style="width:100%;margin-bottom:16px"><button style="flex:1" id="m1" class="${st?"":"on"}">Licensee</button><button style="flex:1" id="m2" class="${st?"on":""}">Staff</button></div>
  ${fld("e","Gmail address","email",'autocomplete="email"')}
- ${st?"":fld("l","License / permit number","text",'autocapitalize="characters"')}
+ 
  ${fld("p1","Password (min. 8 characters)","password",'autocomplete="new-password"')}
  ${fld("p2","Confirm password","password",'autocomplete="new-password"')}
  <div class="err" id="err"></div>
@@ -679,13 +681,13 @@ function signup(){
  eyes();$("#bk").onclick=()=>{screen="login";render()};
  $("#m1").onclick=()=>{suMode="licensee";signup()};$("#m2").onclick=()=>{suMode="staff";signup()};
  $("#go").onclick=()=>run();$$("#f input").forEach(i=>i.onkeydown=e=>{if(e.key==="Enter")run()});const run=async()=>{
-  const em=$("#e").value.trim().toLowerCase(),ln=st?"":norm($("#l").value),p1=$("#p1").value;
+  const em=$("#e").value.trim().toLowerCase(),p1=$("#p1").value;
   if(!isGmail(em))return fail("Enter a valid @gmail.com address.");
-  if(!st&&!/^(DL|SP)[A-Z0-9]{3}-[A-Z0-9]{2}-[A-Z0-9]{3}$/.test(ln))return fail("License number must look like DLXXX-XX-XXX (or SPXXX-XX-XXX for permits).");
+  
   if(p1.length<8)return fail("Password must be at least 8 characters.");
   if(p1!==$("#p2").value)return fail("Passwords do not match.");
   const btn=$("#go");btn.disabled=true;btn.textContent="Registering…";
-  try{const cr=await AUTH.createUserWithEmailAndPassword(em,p1);await cr.user.updateProfile({displayName:st?"PENDING_STAFF":"PENDING:"+ln});await cr.user.sendEmailVerification();await AUTH.signOut()}
+  try{const cr=await AUTH.createUserWithEmailAndPassword(em,p1);await cr.user.updateProfile({displayName:st?"PENDING_STAFF":"PENDING_NEW"});await cr.user.sendEmailVerification();await AUTH.signOut()}
   catch(e){btn.disabled=false;btn.textContent="Register now";return fail(aerr(e))}
   screen="login";render();toast("Almost done! Open the verification link we emailed you (check spam), then log in.")}}
 
@@ -772,7 +774,7 @@ const eCard=r=>{const no=esc(r.licenseNo)||"NO NUMBER",codes=r.restr||[],stu=r.t
   <div class="lh"><img src="${LOGO}" alt=""><div><small>PNP TRANSPORTATION OFFICE</small><b${stu?' style="font-size:max(8px,2.5cqw)"':""}>${stu?"STUDENT DRIVER’S PERMIT":"DRIVER’S LICENSE"}</b></div></div>${stu?'<div class="hz"></div>':""}
   <div class="flag"><img src="${FLAG}" alt="Philippine flag"></div>
   <div class="lb"><div class="lp">${ph||"<span>NO PHOTO</span>"}</div><div class="li"><h4>${esc(r.name)||"Username pending"}</h4><div class="num">${no}</div>
-  <div class="lf">${f("Type",r.type)}${f("Age",r.age)}${f("Codes",codes.join(", "))}${f("Issued",r.issued)}${f("Expires",r.expiry)}</div></div></div>
+  <div class="lf">${f("Type",r.type)}${f("Age",r.age)}${f("Sex",r.sex)}${f("Nationality",r.nat)}${f("Codes",codes.join(", "))}${f("Issued",r.issued)}${f("Expires",r.expiry)}</div></div></div>
   <div class="fsig">${r.sig?`<img src="${r.sig}" alt="">`:""}</div><div class="fsl">SIGNATURE</div>
   <div class="ls" style="background:${(STC[r.status]||STC.Pending)[0]};color:${(STC[r.status]||STC.Pending)[1]}">${esc(r.status).toUpperCase()}</div><div class="sc">SECURITY CODE<b>${secCode(r)}</b></div>${stu?'<div class="nb">ACCOMPANIED DRIVING ONLY • LICENSED COMPANION REQUIRED</div>':`<div class="mt">${"PNPTRANSPORTATIONOFFICE ".repeat(14)}</div>`}<div class="hl"></div></div>
  <div class="face back${stu?" stu":""}"><div class="gb"></div><div class="wm3" style="background-image:url(${LOGO})"></div><div class="st"></div><div class="hl"></div><div class="seal"><img src="${LOGO}" alt=""></div><div class="bb">${stu?"PNP TRANSPORTATION OFFICE  •  STUDENT DRIVER’S PERMIT  •  ACCOMPANIED DRIVING ONLY":"PNP TRANSPORTATION OFFICE  •  DRIVER’S LICENSE  •  HIGHWAY PATROL GROUP  •  PNP TRANSPORTATION OFFICE  •  DRIVER’S LICENSE"}</div><div class="cpic">${ph||"<span>NO PHOTO</span>"}</div>
@@ -783,7 +785,7 @@ const eCard=r=>{const no=esc(r.licenseNo)||"NO NUMBER",codes=r.restr||[],stu=r.t
   <div class="bc">${barcode(norm(r.licenseNo||"")||"NONE")}<span>${no}</span></div></div></div></div></div><p class="hint">Tap the card to flip it</p>`};
 const bindFlip=root=>$$(".flip",root).forEach(f=>{const g=()=>f.classList.toggle("on");f.onclick=g;f.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();g()}}});
 const validity=r=>!r.expiry?"":(new Date(r.expiry+"T23:59:59")<new Date()?"Expired on "+r.expiry:"Valid until "+r.expiry);
-const details=r=>{const kv=(l,v)=>`<div class="kv"><small>${l}</small>${esc(v)||"—"}</div>`;return`<div class="grid">${kv("Date issued",r.issued)}${kv("Expiry date",r.expiry)}${kv("Validity",validity(r))}${kv("Gmail",r.email)}${kv("Discord",r.discord)}${r.renewOk?kv("Renewal exam","Passed "+r.renewOk.score+"/"+r.renewOk.total+" on "+r.renewOk.date):""}${r.type==="Student Permit"?kv("Driving condition","Licensed companion required"):""}${kv("License codes",(r.restr||[]).map(x=>x+" - "+RESTR[x]).join(", "))}</div>`};
+const details=r=>{const kv=(l,v)=>`<div class="kv"><small>${l}</small>${esc(v)||"—"}</div>`;return`<div class="grid">${kv("Date issued",r.issued)}${kv("Expiry date",r.expiry)}${kv("Validity",validity(r))}${kv("Gmail",r.email)}${kv("Discord",r.discord)}${kv("Sex",r.sex)}${kv("Nationality",r.nat)}${r.renewOk?kv("Renewal exam","Passed "+r.renewOk.score+"/"+r.renewOk.total+" on "+r.renewOk.date):""}${r.type==="Student Permit"?kv("Driving condition","Licensed companion required"):""}${kv("License codes",(r.restr||[]).map(x=>x+" - "+RESTR[x]).join(", "))}</div>`};
 const vsOf=r=>load().violations.filter(v=>norm(v.licenseNo||"")===norm(r.licenseNo||"")).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 const dem=r=>vsOf(r).reduce((s,v)=>s+pts(v),0);
 const vlist=r=>{const V=vsOf(r);return V.length?V.map(v=>`<div class="viol"><div><b>${esc(v.title)}</b><small>${esc(v.date)}${v.notes?" · "+esc(v.notes):""}</small></div><span class="pill ${sev(pts(v))}">+${pts(v)} pts</span></div>`).join(""):'<div class="empty">No violations on record.</div>'};
@@ -881,11 +883,11 @@ function dash(){
  const d=load(),R=d.records,now=Date.now(),soon=R.filter(r=>r.expiry&&new Date(r.expiry)>now&&new Date(r.expiry)-now<7776e6).length,c=s=>R.filter(r=>r.status===s).length,unp=d.violations.length;
  const rec=[...R].sort((a,b)=>b.id-a.id).slice(0,6);
  applyDC();$("#panel").innerHTML=`${secCard(d)}<div class="tools" style="justify-content:flex-end;margin-bottom:10px"><button class="btn ghost sm" id="czb">⚙ Customize</button></div>${cz?czHTML():""}${CH.sta.hide?"":`<div class="card act" id="stacard">${chartHTML(d,CH.sta)}</div>`}
- ${pendRev(d).length?revCard(d):""}
+ ${pendApps(d).length?appCard(d):""}${pendRev(d).length?revCard(d):""}
  ${CH.act.hide?"":`<div class="card act" id="actcard">${chartHTML(d,CH.act)}</div>`}
  <div class="card"><div class="cardh"><h3>Recently added</h3><button class="btn sm" id="n">+ Add license</button></div>
  ${rec.length?T(["Username","License No.","Codes","Status",""],rec.map(r=>[`<div class="tn"><span class="av">${esc(ini(r.name))}</span>${esc(r.name)||"Username pending"}</div>`,`<span class="num">${esc(r.licenseNo)||"—"}</span>`,esc((r.restr||[]).join(", "))||"—",`<span class="pill ${esc(r.status)}">${esc(r.status)}</span>`,`<button class="btn ghost sm" data-i="${r.id}">View</button>`])):'<div class="empty">No licenses yet. Add your first one.</div>'}</div>`;
- bindChart(d,CH.sta);bindChart(d,CH.act);bindRev();bindCz();bindSec();$("#n").onclick=()=>{tab="add";admin()};$$("[data-i]").forEach(b=>b.onclick=()=>info(+b.dataset.i))}
+ bindChart(d,CH.sta);bindChart(d,CH.act);bindRev();bindApps();bindCz();bindSec();$("#n").onclick=()=>{tab="add";admin()};$$("[data-i]").forEach(b=>b.onclick=()=>info(+b.dataset.i))}
 function gen(){
  P(`<p class="note" style="margin:0 0 14px">Format: DL + 3 digits, 2 digits, 3 digits. New licenses also get a number automatically.</p><div id="out2"></div>
  <div class="tools"><button class="btn" id="g5">Generate 5 numbers</button><button class="btn ghost" id="gu">Use first in a new license</button></div>`);
@@ -1021,7 +1023,7 @@ function editor(id){
  $("#gn").onclick=()=>{$("#f_licenseNo").value=genNo($("#f_type").value==="Student Permit"?"SP":"DL");toast("New number generated")};
  const rx=()=>{$("#f_expiry").value=addM($("#f_issued").value,VALID_MONTHS)};$("#f_issued").onchange=rx;$("#f_type").onchange=()=>{rx();const f=$("#f_licenseNo"),v=f.value.toUpperCase(),sp=$("#f_type").value==="Student Permit";if(sp&&v.startsWith("DL"))f.value="SP"+v.slice(2);else if(!sp&&v.startsWith("SP"))f.value="DL"+v.slice(2)};
  $("#cx").onclick=()=>{tab="list";admin()};
- $("#sv").onclick=()=>{const x=load(),o={id:id||Date.now(),photo,sig,sigc:1};
+ $("#sv").onclick=()=>{const x=load(),o={id:id||Date.now(),photo,sig,sigc:1,sex:r.sex||"",nat:r.nat||""};
   ["name","discord","age","email","licenseNo","type","status","issued","expiry"].forEach(k=>o[k]=$("#f_"+k).value.trim());
   o.email=o.email.toLowerCase();o.licenseNo=o.licenseNo.toUpperCase().replace(/\s+/g,"").replace(/^(DL|SP)/,o.type==="Student Permit"?"SP":"DL");o.restr=$$(".chips input:checked").map(i=>i.value);
   if(!o.name)return toast("Enter the Roblox username");
@@ -1608,7 +1610,7 @@ window.onRemote=()=>{const s=sess();if(!s){const g=gGet();if($("#gm")&&$("#gx")&
  else if(s.role==="licensee"&&pview==="sup"&&supTab==="chat"){const v=($("#cm")||{}).value;portal(s.email);const m=$("#cm");if(m&&v)m.value=v}
  else if(s.role!=="licensee"&&tab==="sup"){const v=($("#sm")||{}).value;admin();const m=$("#sm");if(m&&v)m.value=v}};
 
-let pview="home";
+let pview="home",lhave=null,lform=null;
 const PI={
  license:'<rect x="4" y="12" width="56" height="40" rx="6"/><path d="M4 23h56"/><rect x="11" y="29" width="15" height="17" rx="2.5"/><circle cx="18.5" cy="35" r="3" fill="currentColor"/><path d="M13.5 44c.6-3 2.4-4.4 5-4.4s4.4 1.400 5 4.400" fill="currentColor"/><path d="M33 31h19M33 38h19M33 45h11"/><circle cx="53" cy="17.500" r="2" fill="currentColor" stroke="none"/><circle cx="46" cy="17.500" r="2" fill="currentColor" stroke="none"/>',
  cert:'<path d="M11 8h42v36H11z"/><path d="M19 18h26M19 26h26M19 34h14"/><circle cx="44" cy="45" r="8.500"/><path d="M40 52l-2.500 9 6.500-3.500 6.500 3.500-2.500-9"/>',
@@ -1623,6 +1625,63 @@ const ico=(k,z=64,w=2)=>`<svg viewBox="0 0 64 64" width="${z}" height="${z}" fil
 const PTILES=[["lic","LICENSING","cert","Details & validity"],["vio","VIOLATIONS","bank","Demerit points"],["doc","DOCUMENTS","file","Downloads"],["pro","PROFILE","user","Your account"],["sup","SUPPORT","chat","FAQs & live chat"]];
 function dlRecord(r){try{const V=vsOf(r),t=dem(r),L=["TRANSPORTATION OFFICE - LMS PORTAL","DRIVING RECORD","","Holder: "+(r.name||"-"),"License No.: "+(r.licenseNo||"-"),"Type: "+(r.type||"-"),"Status: "+r.status,"Issued: "+(r.issued||"-"),"Expires: "+(r.expiry||"-"),"Codes: "+((r.restr||[]).join(", ")||"-"),"","Demerit points: "+t+" ("+standing(t).l+")","","Violations:",...(V.length?V.map(v=>"- "+v.date+"  "+v.title+" (+"+pts(v)+" pts)"+(v.notes?" - "+v.notes:"")):["None on record."]),"","Generated "+new Date().toLocaleString()];
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([L.join("\n")],{type:"text/plain"}));a.download=(r.licenseNo||"record")+"-driving-record.txt";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast("Driving record downloaded")}catch{toast("Download is not supported in this viewer")}}
+/* ===== LICENSE APPLICATIONS ===== */
+const APK={student:"Student Permit",license:"Driver’s License",renew:"License Renewal"},APC={Pending:"Pending","Changes requested":"Suspended",Rejected:"Expired",Approved:"Active"};
+const myApps=(d,e)=>d.apps.filter(a=>a.email===e).sort((a,b)=>b.id-a.id);
+function licHTML(r,email){const A=myApps(load(),email),last=A[0],busy=!!A.find(a=>a.status==="Pending"||a.status==="Changes requested");
+ if(lform)return appForm();
+ const stu=r&&r.type==="Student Permit",exp=r&&r.status==="Expired",have=r?(stu?(exp?"pexp":"permit"):(exp?"expired":"valid")):lhave;
+ let h="";
+ if(last&&last.status!=="Approved")h+=`<div class="pcard" style="margin-bottom:14px"><div class="prow2"><div><small>LATEST APPLICATION</small><div class="num" style="font-size:1rem">${esc(APK[last.kind])}</div></div><span class="pill ${APC[last.status]}">${esc(last.status)}</span></div>${last.status==="Pending"?'<p class="note" style="margin:10px 0 0">Staff are reviewing your application.</p>':""}${last.note?`<p class="note" style="margin:10px 0 0"><b>Staff note:</b> ${esc(last.note)}</p>`:""}${last.status==="Changes requested"?`<button class="btn full" data-ed="${last.id}" style="margin-top:12px">Edit &amp; resubmit</button>`:""}</div>`;
+ if(!have&&!busy)return h+`<div class="pcard" style="margin-bottom:14px"><h3 style="margin:0 0 6px">Do you already have a license?</h3><p class="note" style="margin:0 0 12px">This shows you the right option to apply for.</p><button class="btn full" data-lh="valid">Yes, it is still valid</button><button class="btn ghost full" data-lh="expired" style="margin-top:10px">Yes, but it has expired</button><button class="btn ghost full" data-lh="none" style="margin-top:10px">No, I don’t have one yet</button></div>`;
+ const ok={valid:["license"],expired:["renew"],none:["student"],permit:["license"],pexp:["student","license"]}[have]||[];
+ const B=[["student","STUDENT PERMIT","For new drivers · licensed companion required"],["license","DRIVER’S LICENSE","Apply for a license card"],["renew","RENEW","For an expired license"]];
+ h+=B.map(b=>{const on=!busy&&ok.includes(b[0]);return`<button class="pfeat" data-la="${b[0]}" ${on?"":"disabled"} style="margin-bottom:12px;${on?"":"opacity:.45;cursor:not-allowed"}"><span class="pico">${ico("cert",44,2.2)}</span><span class="tx"><b>${b[1]}</b><small>${b[2]}</small></span><span class="chev">${ico("chev",22,4)}</span></button>`}).join("");
+ if(busy)h+='<p class="note" style="text-align:center">You can apply again once your current application is finished.</p>';
+ else if(!r)h+='<p class="note" style="text-align:center"><a class="fpl" role="button" data-lh="">Change my answer</a></p>';
+ return h}
+function appForm(){const a=lform,inp=(k,l,t="text")=>fld("a_"+k,l,t).replace('placeholder=" "','placeholder=" " value="'+esc(a[k])+'"'),
+ sel=(k,l,o)=>`<div class="fld"><select id="a_${k}">${o.map(x=>`<option ${a[k]===x?"selected":""}>${x}</option>`).join("")}</select><label>${l}</label></div>`,
+ UP=[["photo","Avatar photo","Your Roblox avatar on a plain white background."],["sig","Signature picture","Your signature as a PNG with no background."],["med","Valid medical certificate","A clear photo or scan of a valid certificate."]];
+ return`<div class="pcard"><h3 style="margin:0 0 4px">${esc(APK[a.kind])} application</h3><p class="note" style="margin:0 0 14px">Fill in your details as they should appear on the card. Staff will review them.</p>
+ ${inp("name","Roblox username")}${inp("discord","Discord username")}${inp("age","Age","number")}${sel("sex","Sex",["Male","Female"])}${inp("nat","Nationality")}${a.kind==="renew"?inp("prevNo","Previous license number"):""}
+ <label style="color:var(--mu);font-size:.8rem">License codes</label><div class="chips">${Object.keys(RESTR).map(k=>`<label><input type="checkbox" value="${k}" ${(a.restr||[]).includes(k)?"checked":""}>${k} · ${RESTR[k]}</label>`).join("")}</div>
+ ${UP.map(u=>`<div class="rdoc"><div class="rdv">${a[u[0]]?`<img src="${a[u[0]]}" alt="">`:"No file"}</div><div class="rdt"><b>${u[1]} <span style="color:#e0b04b">*</span></b><small>${u[2]}</small><button class="btn ghost sm" type="button" id="b_${u[0]}">${a[u[0]]?"Replace":"Upload"}</button><input type="file" id="f_${u[0]}" accept="image/*" hidden></div></div>`).join("")}
+ <button class="btn full" id="asub" style="margin-top:6px">${a.id?"Resubmit application":"Submit application"}</button><button class="btn ghost full" id="acan" style="margin-top:10px">Cancel</button></div>`}
+function bindLic(email,r){const re=()=>{portal(email);window.scrollTo(0,0)};
+ $$("[data-lh]").forEach(b=>b.onclick=()=>{lhave=b.dataset.lh||null;re()});
+ $$("[data-la]").forEach(b=>b.onclick=()=>{if(b.disabled)return;const k=b.dataset.la;if(k==="renew"&&r){pview="ren";rstep="docs";rdocs={med:null,lic:null};qz=null;re();return}
+  const l=myApps(load(),email).find(a=>a.photo)||{};lform={kind:k,name:(r&&r.name)||l.name||"",discord:(r&&r.discord)||l.discord||"",age:(r&&r.age)||l.age||"",sex:(r&&r.sex)||l.sex||"Male",nat:(r&&r.nat)||l.nat||"Filipino",restr:(r&&r.restr)||l.restr||[],photo:(r&&r.photo)||l.photo||"",sig:(r&&r.sig)||l.sig||"",med:"",prevNo:""};re()});
+ $$("[data-ed]").forEach(b=>b.onclick=()=>{const a=myApps(load(),email).find(x=>x.id===+b.dataset.ed);if(a){lform=JSON.parse(JSON.stringify(a));re()}});
+ const pr=$("#prenew");if(pr){pr.style.display="none";if(pr.nextElementSibling)pr.nextElementSibling.style.display="none"}
+ if(!lform)return;const a=lform;
+ const keep=()=>{["name","discord","age","nat","prevNo"].forEach(k=>{const e=$("#a_"+k);if(e)a[k]=e.value.trim()});a.sex=$("#a_sex").value;a.restr=$$(".chips input:checked").map(i=>i.value)};
+ ["photo","sig","med"].forEach(k=>{$("#b_"+k).onclick=()=>$("#f_"+k).click();$("#f_"+k).onchange=async e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type))return toast("Please choose an image file");keep();try{a[k]=k==="sig"?await sigFrom(await readFile(f),480,160):await shrink(f);re()}catch{toast("Could not read that image")}}});
+ $("#acan").onclick=()=>{lform=null;re()};
+ $("#asub").onclick=()=>{keep();const m=!a.name?"Enter your Roblox username":!a.discord?"Enter your Discord username":!(+a.age>0&&+a.age<121)?"Enter a valid age":!a.nat?"Enter your nationality":!a.restr.length?"Choose at least one license code":a.kind==="renew"&&!a.prevNo?"Enter your previous license number":!a.photo?"Upload your avatar photo":!a.sig?"Upload your signature":!a.med?"Upload your valid medical certificate":"";if(m)return toast(m);
+  const x=load(),o=Object.assign({},a,{email:email,status:"Pending",note:"",date:today()});
+  if(a.id){const i=x.apps.findIndex(y=>y.id===a.id);if(i>=0){o.hist=(x.apps[i].hist||[]).concat({d:today(),k:"resubmitted"});x.apps[i]=o}}else{o.id=Date.now();o.hist=[{d:today(),k:"submitted"}];x.apps.push(o)}
+  try{save(x)}catch{return toast("Storage is full. Use smaller images.")}lform=null;toast("Application submitted");re()}}
+/* staff: review applications */
+const pendApps=d=>(d.apps||[]).filter(a=>a.status==="Pending");
+function appCard(d){const L=pendApps(d);return`<div class="card"><div class="cardh"><h3>License applications · for staff review <span style="color:var(--mu);font-weight:400">· ${L.length}</span></h3></div>${L.length?T(["Applicant","Type","Submitted","Action"],L.map(a=>[`<div class="tn"><span class="av">${esc(ini(a.name))}</span>${esc(a.name)}</div>`,esc(APK[a.kind]),esc(a.date),`<button class="btn sm" data-ap="${a.id}">Review</button>`])):'<div class="empty">No applications waiting for review.</div>'}</div>`}
+function bindApps(){$$("[data-ap]").forEach(b=>b.onclick=()=>appReview(+b.dataset.ap))}
+function appReview(id){const d=load(),a=d.apps.find(x=>x.id===id);if(!a)return;const stu=a.kind==="student",ex=d.records.find(r=>r.email===a.email);
+ let no;if(ex&&(ex.type==="Student Permit")===stu&&ex.licenseNo)no=ex.licenseNo;else if(a.kind==="renew"&&LNRE.test(norm(a.prevNo||"")))no=norm(a.prevNo);else no=genNo(stu?"SP":"DL");
+ if(d.records.some(r=>r.email!==a.email&&norm(r.licenseNo||"")===norm(no)))no=genNo(stu?"SP":"DL");
+ const rec=Object.assign({},ex||{},{id:ex?ex.id:Date.now(),email:a.email,name:a.name,discord:a.discord,age:a.age,sex:a.sex,nat:a.nat,restr:a.restr,photo:a.photo,sig:a.sig,sigc:1,type:stu?"Student Permit":"Non-Professional",licenseNo:no,issued:today(),expiry:addM(today(),VALID_MONTHS),status:"Active"});delete rec.baseStatus;
+ const m=document.createElement("div");m.className="modal";
+ m.innerHTML=`<div class="glass in"><h3 style="margin:0 0 4px">${esc(APK[a.kind])} application</h3><p class="note" style="margin:0 0 12px">${esc(a.email)} · submitted ${esc(a.date)}. The card below is filled in from the applicant’s answers.</p>${eCard(rec)}
+ <div class="cardh" style="margin:14px 0 0"><h3 style="font-size:1rem">Applicant details</h3></div><div class="grid"><div class="kv"><small>Sex</small>${esc(a.sex)}</div><div class="kv"><small>Nationality</small>${esc(a.nat)}</div><div class="kv"><small>Discord</small>${esc(a.discord)}</div>${a.prevNo?`<div class="kv"><small>Previous license no.</small>${esc(a.prevNo)}</div>`:""}<div class="kv"><small>Medical certificate</small><a href="${a.med}" target="_blank"><img src="${a.med}" alt="" style="width:100%;border-radius:10px"></a></div></div>
+ <textarea id="an" rows="3" placeholder="Note to the applicant (required to request changes or reject)" style="width:100%;margin-top:12px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #8886;font:inherit"></textarea>
+ <div class="tools" style="margin-top:14px"><button class="btn" id="aok">Approve &amp; issue</button><button class="btn ghost" id="ach">Request changes</button><button class="btn red" id="arj">Reject</button><button class="btn ghost" id="acl">Close</button></div></div>`;
+ document.body.appendChild(m);bindFlip(m);m.onclick=e=>{if(e.target===m)m.remove()};$("#acl",m).onclick=()=>m.remove();
+ const dec=st=>{const n=$("#an",m).value.trim();if(!n)return toast("Write a note for the applicant");const x=load(),A=x.apps.find(y=>y.id===id);if(!A)return;A.status=st;A.note=n;(A.hist=A.hist||[]).push({d:today(),k:st.toLowerCase()});save(x);m.remove();toast("Sent to the applicant");admin()};
+ $("#ach",m).onclick=()=>dec("Changes requested");$("#arj",m).onclick=()=>dec("Rejected");
+ $("#aok",m).onclick=()=>{const x=load(),A=x.apps.find(y=>y.id===id);if(!A)return;const i=x.records.findIndex(y=>y.email===A.email);
+  if(i>=0){const o=x.records[i];if(norm(o.licenseNo||"")!==norm(rec.licenseNo))x.violations.forEach(v=>{if(norm(v.licenseNo||"")===norm(o.licenseNo||""))v.licenseNo=rec.licenseNo});rec.hist=(o.hist||[]).concat({k:A.kind==="renew"?"renew":"issue",d:today()});delete rec.renewOk;rec.id=o.id;x.records[i]=rec}else{rec.hist=[{k:"issue",d:today()}];x.records.push(rec)}
+  if(!x.whitelist.includes(A.email))x.whitelist.push(A.email);A.status="Approved";A.note="";(A.hist=A.hist||[]).push({d:today(),k:"approved"});
+  try{save(x)}catch{return toast("Storage is full. Use smaller images.")}m.remove();toast("Approved · license issued");admin()}}
 function portal(email){
  const r=load().records.find(x=>x.email===email),tot=r?dem(r):0,st=standing(tot),nm=((r&&r.name)||email.split("@")[0]);
  const TT={sup:"Support",id:"Digital ID",lic:"Licensing",vio:"Violations",doc:"Documents",pro:"Profile",ren:"Renewal"};
@@ -1634,7 +1693,7 @@ function portal(email){
   <h1 class="pwel"><span>WELCOME,</span><b>${esc(nm)}</b></h1><div class="pdiv"><i></i><em></em><i></i></div><p class="psub">What would you like to do?</p>
   <button class="pfeat" data-go="id"><span class="pico">${ico("license",44,2.2)}</span><span class="tx"><b>DIGITAL ID</b><small>Your ${stu?"student permit":"driver’s license"}, always with you</small></span><span class="chev">${ico("chev",22,4)}</span></button>
   <div class="ptiles">${PTILES.map((t,i)=>`<button class="ptile${t[0]==="sup"?" wide":""}" style="--i:${i+2}" data-go="${t[0]}"><span class="pico">${ico(t[2],30,2.4)}</span><span><b>${t[1]}${t[0]==="sup"&&supUnreadU(load(),email)?` <em class="bdg">${supUnreadU(load(),email)}</em>`:""}</b><small>${t[3]}</small></span></button>`).join("")}</div>`}
- else{let c='<div class="pcard empty">No record found. Please contact the Transportation Office.</div>';
+ else{let c='<div class="pcard empty">You don’t have a license or permit yet. Open Licensing to apply.</div>';
   if(r){
    if(pview==="id")c=`${eCard(r)}<button class="btn full" id="pdl" style="margin-bottom:14px">Download license</button>${snote}`;
    if(pview==="lic")c=`<button class="pfeat" id="linfo" aria-expanded="false"><span class="pico">${ico("cert",44,2.2)}</span><span class="tx"><b>LICENSE INFORMATION</b><small>Tap to view your ${stu?"permit":"license"} details</small></span><span class="chev">${ico("chev",22,4)}</span></button>
@@ -1644,7 +1703,8 @@ function portal(email){
    if(pview==="vio")c=`<div class="pcard"><div class="cardh"><h3>Demerit points</h3><span class="pill ${st.c}">${tot} pts · ${st.l}</span></div>${meter(tot)}${tlist(r)}</div><a class="btn full settle" href="${SETTLE_URL}" target="_blank" rel="noopener noreferrer">Settle violation</a><p class="note" style="text-align:center;margin:10px 0 0">Opens the T.O Discord settle-violation channel.</p>`;
    if(pview==="doc")c=`<div class="pdoc"><span class="pico">${ico("license",30,2.4)}</span><div><b>${stu?"Student permit":"Driver’s license"} (image)</b><small>PNG of the front and back</small></div><button class="btn sm" id="pdl">Download</button></div>
     <div class="pdoc"><span class="pico">${ico("file",30,2.4)}</span><div><b>Driving record</b><small>Details and violations (text file)</small></div><button class="btn sm" id="prec">Download</button></div>`;
-   if(pview==="pro")c=`<div class="pav">${r.photo?`<img src="${r.photo}" alt="">`:esc(ini(r.name))}</div><div class="pcard"><div class="grid">${[["Roblox username",r.name],["Discord",r.discord],["Gmail",r.email],["Age",r.age],[stu?"Permit no.":"License no.",r.licenseNo],["Type",r.type]].map(x=>`<div class="kv"><small>${x[0]}</small>${esc(x[1])||"—"}</div>`).join("")}</div></div><button class="btn ghost full" id="out2">Log out</button>`}
+   if(pview==="pro")c=`<div class="pav">${r.photo?`<img src="${r.photo}" alt="">`:esc(ini(r.name))}</div><div class="pcard"><div class="grid">${[["Roblox username",r.name],["Discord",r.discord],["Gmail",r.email],["Age",r.age],["Sex",r.sex],["Nationality",r.nat],[stu?"Permit no.":"License no.",r.licenseNo],["Type",r.type]].map(x=>`<div class="kv"><small>${x[0]}</small>${esc(x[1])||"—"}</div>`).join("")}</div></div><button class="btn ghost full" id="out2">Log out</button>`}
+  if(pview==="lic"){const h=licHTML(r,email);c=lform?h:h+(r?c:"")}
   if(pview==="sup")c=supHTML(email);
   body=`<div class="phd"><button class="pback" data-go="${pview==="ren"?"lic":"home"}">‹ Back</button><h2>${TT[pview].toUpperCase()}</h2></div>${c}`}
  view(`<div class="pscreen"><div class="pbg"></div>
@@ -1653,10 +1713,11 @@ function portal(email){
  <div class="pmain"><div class="ppanel">${body}<div class="pmid"><img src="${LOGO}" alt=""><div><b>TRANSPORTATION OFFICE</b><span>LICENSING MANAGEMENT SYSTEM</span></div></div></div></div>
  <footer class="pbar">RELEASE 1.0 · BY <b>FRANXZZZZ</b></footer></div>`);
  bindOut();bindFlip(document);if(pview==="sup")bindSup(email);
- $$("[data-go]").forEach(b=>b.onclick=()=>{if(pview==="ren"&&rstep==="quiz"&&!confirm("Leave the test? Your progress will be lost."))return;if(pview==="ren"){rstep="docs";qz=null}pview=b.dataset.go;portal(email);window.scrollTo(0,0)});
+ $$("[data-go]").forEach(b=>b.onclick=()=>{if(pview==="ren"&&rstep==="quiz"&&!confirm("Leave the test? Your progress will be lost."))return;if(pview==="ren"){rstep="docs";qz=null}if(b.dataset.go!=="lic")lform=null;pview=b.dataset.go;portal(email);window.scrollTo(0,0)});
  const li=$("#linfo");if(li)li.onclick=()=>{const o=$("#lbody").classList.toggle("open");li.setAttribute("aria-expanded",o)};
  const pr=$("#prenew");if(pr)pr.onclick=()=>{pview="ren";rstep="docs";rdocs={med:null,lic:null};qz=null;portal(email);window.scrollTo(0,0)};
  if(pview==="ren"&&r)bindRen(email);
+ if(pview==="lic")bindLic(email,r);
  if(r){const d1=$("#pdl");if(d1)d1.onclick=()=>dlLicense(r);const d2=$("#prec");if(d2)d2.onclick=()=>dlRecord(r)}
  const o2=$("#out2");if(o2)o2.onclick=()=>$("#out").click()}
 document.body.classList.add("splashing");
