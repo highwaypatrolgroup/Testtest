@@ -468,6 +468,16 @@ body.adm .atip{background:var(--card);color:var(--tx);box-shadow:0 8px 24px #000
 .pnote{background:#e0b04b22}
 .pdiv i{background:#e0b04b66}
 .btn.big.reg{background:#e2001a;color:#fff}
+.btn.big.out{color:#fff}
+.auth>.lthm{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;z-index:5;width:auto;padding:8px 14px}
+html[data-theme=light] .auth:before{background:#eaf0ff;opacity:.6}
+html[data-theme=light] .auth .box{--tx:#0f1b3d;--mu:#4a5680;--bd:#c3cde8;--gold:#9a6b00;background:#ffffffe8;color:#0f1b3d;border-color:#c3cde8}
+html[data-theme=light] .auth .fld input{background:#fff}
+html[data-theme=light] .auth .btn.big.out{color:#0f1b3d;border-color:#0f1b3d99}
+html[data-theme=light] .auth .lthm{color:#0f1b3d;background:#ffffffcc}
+.pwel b{font-family:"Segoe UI",Inter,Roboto,system-ui,sans-serif;font-weight:600;letter-spacing:.01em;text-transform:none}
+.ngrp{font-size:.66rem;letter-spacing:.14em;color:var(--mu);font-weight:700;padding:14px 12px 4px}
+@media(max-width:820px){.ngrp{display:none}}
 </style>
 </head>
 <body>
@@ -622,7 +632,7 @@ async function hash(p){const b=new TextEncoder().encode("to-salt:"+p);if(window.
 let tt;function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("show"),2600)}
 const fld=(id,label,type="text",extra="")=>`<div class="fld${type==="date"||type==="time"?" up":""}"><input id="${id}" type="${type}" placeholder=" " ${extra}><label for="${id}">${label}</label>${type==="password"?`<button type="button" class="eye" data-eye="${id}" aria-label="Show password">Show</button>`:""}</div>`;
 function eyes(){$$("[data-eye]").forEach(b=>b.onclick=()=>{const i=$("#"+b.dataset.eye);const h=i.type==="password";i.type=h?"text":"password";b.textContent=h?"Hide":"Show"})}
-function fail(m){const e=$("#err");e.textContent=m;const b=$(".box");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake")}
+function fail(m){if(screen==="login")secLog("login",m);const e=$("#err");e.textContent=m;const b=$(".box");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake")}
 function view(h){const a=$("#app");a.innerHTML=h;document.body.classList.toggle("adm",h.indexOf('class="shell"')>-1)}
 
 let screen="login";
@@ -633,7 +643,7 @@ function render(){{const o=document.getElementById("xov");if(o){o.remove();docum
 
 /* ===== UNIFIED LOGIN ===== */
 function login(){
- view(`<div class="auth"><div class="box glass in" id="f">
+ view(`<div class="auth"><button class="btn ghost sm lthm" id="lthm" type="button">◐ Theme</button><div class="box glass in" id="f">
  <img class="logo" src="${LOGO}" alt="PNP Transportation Office">
  <h1 class="caps">TRANSPORTATION OFFICE</h1><p class="sub lms">LMS PORTAL</p>
  <div class="lfw" id="lf" inert><div class="lfi">${fld("u","Email","text",'autocomplete="username" autocapitalize="off"')}
@@ -641,7 +651,7 @@ function login(){
  <div class="err" id="err"></div>
  <div class="bgrp"><button class="btn big reg" id="sg" type="button">Register now</button><button class="btn big out" id="go">Log in</button></div>
  <div class="hint" style="margin-top:52px">Licensing Management System<br><b style="color:var(--mu);letter-spacing:2px">By Franxzzzz</b></div></div></div>`);
- eyes();$("#fp").onclick=()=>forgot();$("#fp").onkeydown=e=>{if(e.key==="Enter")forgot()};$("#sg").onclick=()=>{screen="signup";render()};
+ $("#lthm").onclick=togTheme;eyes();$("#fp").onclick=()=>forgot();$("#fp").onkeydown=e=>{if(e.key==="Enter")forgot()};$("#sg").onclick=()=>{screen="signup";render()};
  $("#go").onclick=()=>{const lf=$("#lf");if(!lf.classList.contains("open")){lf.inert=false;lf.classList.add("open");setTimeout(()=>{const u=$("#u");if(u)u.focus()},420);return}run()};$$("#f input").forEach(i=>i.onkeydown=e=>{if(e.key==="Enter")run()});const run=async()=>{const u=$("#u").value.trim(),p=$("#p").value,btn=$("#go");
   if(!u||!p)return fail("Enter your username/Gmail and password.");
   btn.disabled=true;btn.textContent="Signing in…";
@@ -699,6 +709,41 @@ IC.db='<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.700 3.600 3 8
 IC.avi='<path d="M2 14l8-3V5a2 2 0 014 0v6l8 3v2l-8-1.5V19l2 1.5V22l-4-1-4 1v-1.5L10 19v-4.5L2 16z"/>';
 const svg=k=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
 const NAV=[["dash","Dashboard","Dashboard"],["add","Add","Add license"],["list","Licenses","Licenses"],["avi","Aviation","Aviation Unit"],["viol","Violations","Violations"],["exam","Exam","Renewal exam"],["sup","Support","Support chat"],["gen","Generator","License number generator"],["db","Accounts","Licensee account database"],["audit","Audit logs","Audit logs"],["cfg","Settings","Settings"]];
+function togTheme(){const t=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;sset("localStorage","to_theme",t)}
+const GRP={dash:"STAFF",add:"STAFF",list:"STAFF",avi:"STAFF",exam:"STAFF",sup:"STAFF",gen:"STAFF",viol:"PERSONNEL",db:"ADMINISTRATOR",audit:"ADMINISTRATOR",cfg:"ADMINISTRATOR"},GO=["STAFF","PERSONNEL","ADMINISTRATOR"];
+const NAVS=()=>[...NAV].sort((a,b)=>GO.indexOf(GRP[a[0]])-GO.indexOf(GRP[b[0]]));
+function ngrp(){let g="";$$(".nav button").forEach(b=>{const k=GRP[b.dataset.t];if(k!==g){g=k;const h=document.createElement("div");h.className="ngrp";h.textContent=k;b.before(h)}})}
+let cz=false,DC={};try{DC=JSON.parse(localStorage.getItem("to_dashcfg"))||{}}catch{}
+function applyDC(){["sta","act"].forEach(k=>{const c=DC[k];if(!c)return;CH[k].type=c.type||"line";CH[k].hide=!!c.hide;CH[k].off=new Set(c.off||[])})}
+function saveDC(){["sta","act"].forEach(k=>DC[k]={type:CH[k].type||"line",hide:!!CH[k].hide,off:[...CH[k].off]});try{localStorage.setItem("to_dashcfg",JSON.stringify(DC))}catch{}}
+const czHTML=()=>`<div class="card"><div class="cardh"><h3>Customize dashboard</h3><button class="btn ghost sm" id="czx">Done</button></div>${["sta","act"].map(k=>{const C=CH[k];return`<div style="margin-bottom:16px"><b>${C.title}</b><div class="tools" style="margin:8px 0;align-items:center"><label><input type="checkbox" data-hide="${k}" ${C.hide?"":"checked"}> Show</label><select data-ty="${k}" class="btn ghost sm">${[["line","Curve"],["area","Area"],["bar","Bars"],["donut","Donut"]].map(t=>`<option value="${t[0]}" ${(C.type||"line")===t[0]?"selected":""}>${t[1]}</option>`).join("")}</select></div><div class="alg">${C.series.map(z=>`<button class="al${C.off.has(z[0])?" off":""}" data-sr="${k}:${z[0]}" style="--c:${z[2]}"><i></i><span>${z[1]}</span></button>`).join("")}</div></div>`}).join("")}<div class="tools"><button class="btn sm" id="cza">Only Active licenses</button><button class="btn ghost sm" id="czr">Reset</button></div></div>`;
+function bindCz(){const b=$("#czb");if(b)b.onclick=()=>{cz=!cz;dash()};if(!cz)return;
+ $("#czx").onclick=()=>{cz=false;dash()};
+ $$("[data-hide]").forEach(e=>e.onchange=()=>{CH[e.dataset.hide].hide=!e.checked;saveDC();dash()});
+ $$("[data-ty]").forEach(e=>e.onchange=()=>{CH[e.dataset.ty].type=e.value;saveDC();dash()});
+ $$("[data-sr]").forEach(e=>e.onclick=()=>{const[k,z]=e.dataset.sr.split(":"),o=CH[k].off;o.has(z)?o.delete(z):o.add(z);saveDC();dash()});
+ $("#cza").onclick=()=>{CH.sta.hide=false;CH.sta.off=new Set(CH.sta.series.map(z=>z[0]).filter(z=>z!=="Active"));saveDC();dash()};
+ $("#czr").onclick=()=>{["sta","act"].forEach(k=>{CH[k].off=new Set();CH[k].hide=false;CH[k].type="line"});saveDC();dash()}}
+function secLog(k,m){let ev=[];try{ev=JSON.parse(localStorage.getItem("to_secev"))||[]}catch{}ev.push({k,m,ts:new Date().toISOString()});try{localStorage.setItem("to_secev",JSON.stringify(ev.slice(-200)))}catch{}}
+try{const ap=document.getElementById("app");if(ap)new MutationObserver(ms=>ms.forEach(x=>x.addedNodes.forEach(n=>{if(n.nodeType===1&&/^(SCRIPT|IFRAME|OBJECT|EMBED)$/.test(n.tagName))secLog("dom","Unexpected <"+n.tagName.toLowerCase()+"> element was added to the page.")}))).observe(ap,{childList:true,subtree:true})}catch{}
+const secAck=()=>{try{return JSON.parse(localStorage.getItem("to_secack"))||[]}catch{return[]}};
+function secScan(d){const A=[],now=Date.now(),au=d.audit||[];
+ const win=(arr,ms,n)=>{arr=arr.map(x=>+new Date(x.ts)).filter(x=>x).sort((a,b)=>a-b);for(let i=0;i+n-1<arr.length;i++)if(arr[i+n-1]-arr[i]<=ms)return arr[i+n-1];return 0};
+ const by={};au.forEach(x=>{(by[x.by||"?"]=by[x.by||"?"]||[]).push(x)});
+ Object.keys(by).forEach(u=>{const L=by[u];let t=win(L.filter(x=>/^Deleted/.test(x.action||"")),6e5,5);if(t)A.push({id:"del:"+u+t,sev:"high",t:"Mass deletion",m:u+" deleted 5+ items within 10 minutes.",ts:t});
+  t=win(L.filter(x=>!/^Signed/.test(x.action||"")),3e5,30);if(t)A.push({id:"burst:"+u+t,sev:"med",t:"Rapid-fire changes",m:u+" made 30+ changes within 5 minutes (possible script or compromised account).",ts:t})});
+ let t=win(au.filter(x=>/^Signed/.test(x.action||"")),6e5,10);if(t)A.push({id:"sign"+t,sev:"med",t:"Sign-in surge",m:"10+ sign-ins within 10 minutes.",ts:t});
+ const pat=/<\s*(script|iframe|object|embed|svg|img)|javascript:|\bon[a-z]+\s*=|data:text\/html/i,seen={};
+ (d.records||[]).forEach(r=>{Object.keys(r).forEach(k=>{const v=r[k];if(typeof v==="string"&&!v.startsWith("data:image")&&pat.test(v))A.push({id:"inj:"+r.id+k,sev:"high",t:"Possible script injection",m:"Record "+(r.licenseNo||r.id)+" has suspicious code in “"+k+"”.",ts:now})});
+  const ln=norm(r.licenseNo||"");if(ln){seen[ln]=(seen[ln]||0)+1;if(seen[ln]===2)A.push({id:"dupl:"+ln,sev:"med",t:"Duplicate license number",m:"License no. "+r.licenseNo+" is used by more than one record.",ts:now})}});
+ let ev=[];try{ev=JSON.parse(localStorage.getItem("to_secev"))||[]}catch{}
+ const fl=ev.filter(e=>e.k==="login"),w=win(fl,6e5,5);if(w)A.push({id:"bf"+w,sev:fl.length>=10?"high":"med",t:"Repeated failed logins",m:"5+ failed login attempts within 10 minutes on this device.",ts:w});
+ ev.filter(e=>e.k==="dom"||e.k==="pin").forEach(e=>A.push({id:e.k+e.ts,sev:"high",t:e.k==="dom"?"Unexpected page element":"Database PIN lockout",m:e.m,ts:+new Date(e.ts)}));
+ return A.sort((a,b)=>b.ts-a.ts)}
+const secCard=d=>{if((sess()||{}).role!=="admin")return"";const ack=secAck(),A=secScan(d).filter(a=>!ack.includes(a.id)),C={high:"Revoked",med:"Suspended"};
+ return`<div class="card"><div class="cardh"><h3>Security alerts <span style="color:var(--mu);font-weight:400">· ${A.length}</span></h3>${A.length?'<button class="btn ghost sm" id="secx">Dismiss all</button>':""}</div>${A.length?A.slice(0,8).map(a=>`<div class="tn" style="align-items:flex-start;gap:10px;padding:8px 0"><span class="pill ${C[a.sev]}">${a.sev==="high"?"HIGH":"MEDIUM"}</span><div style="flex:1"><b>${esc(a.t)}</b><br><small style="color:var(--mu)">${esc(a.m)} · ${esc(new Date(a.ts).toLocaleString())}</small></div><button class="btn ghost sm" data-sa="${esc(a.id)}">Dismiss</button></div>`).join(""):'<div class="empty">No threats detected. Monitoring audit logs, records and sign-in activity.</div>'}<p class="note">Checks run in this browser against the shared data. They don’t replace server-side protection (Firestore rules, App Check).</p></div>`};
+function bindSec(){const sv=l=>{try{localStorage.setItem("to_secack",JSON.stringify([...new Set([...secAck(),...l])].slice(-500)))}catch{}dash()};
+ $$("[data-sa]").forEach(b=>b.onclick=()=>sv([b.dataset.sa]));const x=$("#secx");if(x)x.onclick=()=>sv(secScan(load()).map(a=>a.id))}
 let dbOk=false,dbBad=0,dbLock=0,dbShow={},dbQ="";
 let tab="dash",q="",sf="",draft=null,vAdd=false,vSel="";
 const VALID_MONTHS=1; /* default validity of a driver license / permit, in months */
@@ -748,13 +793,13 @@ function admin(){
  const S0=sess()||{};if(S0.role==="staff"&&!load().staff.includes(S0.email))return render();
  if(S0.role==="officer"&&!load().officers.includes(S0.email))return render();
  if(tab==="sup"&&stSel)supMark(stSel);
- const own=S0.role==="admin",off=S0.role==="officer",nav=NAV.filter(n=>off?n[0]==="viol":own||(n[0]!=="cfg"&&n[0]!=="db"&&n[0]!=="audit"));if(!nav.some(n=>n[0]===tab))tab=nav[0][0];
+ const own=S0.role==="admin",off=S0.role==="officer",nav=NAVS().filter(n=>off?n[0]==="viol":own||(n[0]!=="cfg"&&n[0]!=="db"&&n[0]!=="audit"));if(!nav.some(n=>n[0]===tab))tab=nav[0][0];
  const cur=NAV.find(n=>n[0]===tab);
  view(`<div class="shell"><aside class="side"><div class="brand"><img src="${LOGO}" alt=""><div><b>TRANSPORTATION OFFICE</b><small>LMS PORTAL</small></div></div>
  <nav class="nav">${nav.map(n=>`<button data-t="${n[0]}" class="${tab===n[0]?"on":""}">${svg(n[0])}<span>${n[1]}</span>${n[0]==="sup"&&supUnread(load())?`<em class="bdg">${supUnread(load())}</em>`:""}${n[0]==="exam"&&pendRev(load()).length?`<em class="bdg">${pendRev(load()).length}</em>`:""}</button>`).join("")}</nav>
  <div class="who"><span class="av">${own?"AD":off?"VO":"ST"}</span><div><b>${own?"Administrator":off?"Violation officer":"Staff"}</b><br><small style="color:var(--mu)">${own?"Full access":esc(S0.email)}</small></div></div></aside>
  <main><div class="head"><div><img class="mlogo" src="${LOGO}" alt=""><div><h2>${cur[2]}</h2><small>${new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</small></div></div><div class="hbtn"><button class="btn ghost sm" id="thm" aria-label="Toggle light or dark theme">◐ Theme</button><button class="btn ghost sm" id="out">Log out</button></div></div><div id="panel" class="in"></div></main></div>`);
- bindOut();$("#thm").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;sset("localStorage","to_theme",t)};$$("[data-t]").forEach(b=>b.onclick=()=>{tab=b.dataset.t;vAdd=false;admin()});
+ ngrp();bindOut();$("#thm").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;sset("localStorage","to_theme",t)};$$("[data-t]").forEach(b=>b.onclick=()=>{tab=b.dataset.t;vAdd=false;admin()});
  ({dash,add:()=>editor(null),list:records,avi:aviPanel,viol,gen,db:dbPanel,audit:auditPanel,exam:examPanel,sup:supportPanel,cfg:cfgPanel})[tab]()}
 function P(h){$("#panel").innerHTML='<div class="card">'+h+'</div>'}
 let auQ="",auA="";const AP={Signed:"Suspended",Created:"Active",Updated:"",Deleted:"Revoked"};
@@ -801,26 +846,29 @@ const monoPath=P=>{const n=P.length,dx=[],m=[],t=[];if(n<2)return"";
  for(let i=0;i<n-1;i++){const h=dx[i]/3;d+="C"+f(P[i][0]+h)+" "+f(P[i][1]+t[i]*h)+" "+f(P[i+1][0]-h)+" "+f(P[i+1][1]-t[i+1]*h)+" "+f(P[i+1][0])+" "+f(P[i+1][1])}
  return d};
 const chartHTML=(d,C)=>{
- const E=C.ev(d),B=actBuckets(C.p),n=B.length,TT=C.tot?C.tot(d):null;
+ const TY=C.type||"line",E=C.ev(d),B=actBuckets(C.p),n=B.length,TT=C.tot?C.tot(d):null;
  const S=C.series.map(([k,l,c])=>{const v=B.map(()=>0);(E[k]||[]).forEach(x=>{const ms=utcMs(x),i=B.findIndex(b=>ms>=b.a&&ms<b.b);if(i>=0)v[i]++});const win=v.reduce((a,b)=>a+b,0);return{k,l,c,v,win,tot:TT?TT[k]:win}});
  const vis=S.filter(z=>!C.off.has(z.k)),mx=Math.max(4,...vis.map(z=>Math.max(...z.v))),ym=Math.ceil(mx/4)*4;
  const pw=($("#panel")||{}).clientWidth||640,W=Math.max(300,Math.min(900,pw-44)),H=W<480?270:320,L=46,R=14,T=14,Bt=46;
  const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-Bt)*(1-v/ym),k=Math.max(1,Math.ceil(46/((W-L-R)/(n-1)))),all=S.reduce((a,z)=>a+z.win,0);
  const grid=[0,1,2,3,4].map(i=>{const v=ym/4*i,y=Y(v);return`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-10}" y="${y+4}" text-anchor="end">${v}</text>`}).join("");
  const xl=B.map((b,i)=>(n-1-i)%k===0?`<text x="${X(i)}" y="${H-Bt+20}" text-anchor="middle">${b.l}</text>`:"").join("");
- const defs=vis.map(z=>`<linearGradient id="ag-${C.id}-${z.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${z.c}" stop-opacity=".12"/><stop offset="1" stop-color="${z.c}" stop-opacity=".12"/></linearGradient>`).join("");
- const lines=vis.map((z,j)=>{const P=z.v.map((v,i)=>[X(i),Y(v)]),ln=monoPath(P);return`<g style="--c:${z.c};--i:${j}"><path class="ar" d="${ln}L${X(n-1)} ${Y(0)}L${X(0)} ${Y(0)}Z" fill="url(#ag-${C.id}-${z.k})"/><path class="ln" pathLength="1" d="${ln}"/><circle class="er" cx="${X(n-1)}" cy="${Y(z.v[n-1])}" r="5"/><circle class="ed" cx="${X(n-1)}" cy="${Y(z.v[n-1])}" r="4.5"/></g>`}).join("");
- const hd=vis.map(z=>`<circle class="hd" data-k="${z.k}" r="5" style="--c:${z.c}"/>`).join("");
+ const defs=vis.map(z=>`<linearGradient id="ag-${C.id}-${z.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${z.c}" stop-opacity="${TY==="area"?.4:.12}"/><stop offset="1" stop-color="${z.c}" stop-opacity="${TY==="area"?.4:.12}"/></linearGradient>`).join("");
+ const bw=(W-L-R)/n*.78/Math.max(1,vis.length),bars=vis.map((z,j)=>z.v.map((v,i)=>`<rect x="${X(i)-bw*vis.length/2+j*bw}" y="${Y(v)}" width="${Math.max(1,bw-1)}" height="${Y(0)-Y(v)}" rx="2" fill="${z.c}"/>`).join("")).join("");
+ const dv=vis.filter(z=>z.k!=="all"),sm=dv.reduce((a,z)=>a+z.tot,0),rr=Math.min(W-L-R,H-T-Bt)/2-6,cx=W/2,cy=(T+H-Bt)/2,cf=2*Math.PI*rr;let dof=0;
+ const don=dv.map(z=>{const l=sm?cf*z.tot/sm:0,e=`<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${z.c}" stroke-width="${rr*.38}" stroke-dasharray="${l} ${cf-l}" stroke-dashoffset="${-dof}" transform="rotate(-90 ${cx} ${cy})"/>`;dof+=l;return e}).join("")+`<text x="${cx}" y="${cy+9}" text-anchor="middle" style="font-size:28px;font-weight:700;fill:currentColor">${sm}</text>`;
+ const lines=TY==="bar"?bars:TY==="donut"?don:vis.map((z,j)=>{const P=z.v.map((v,i)=>[X(i),Y(v)]),ln=monoPath(P);return`<g style="--c:${z.c};--i:${j}"><path class="ar" d="${ln}L${X(n-1)} ${Y(0)}L${X(0)} ${Y(0)}Z" fill="url(#ag-${C.id}-${z.k})"/><path class="ln" pathLength="1" d="${ln}"/><circle class="er" cx="${X(n-1)}" cy="${Y(z.v[n-1])}" r="5"/><circle class="ed" cx="${X(n-1)}" cy="${Y(z.v[n-1])}" r="4.5"/></g>`}).join("");
+ const hd=TY!=="line"&&TY!=="area"?"":vis.map(z=>`<circle class="hd" data-k="${z.k}" r="5" style="--c:${z.c}"/>`).join("");
  const G=esc(JSON.stringify({n,W,H,L,R,T,B:Bt,ym,t:B.map(b=>b.t),s:vis.map(z=>({k:z.k,l:z.l,c:z.c,v:z.v}))}));
  const per={day:"Last 14 days",week:"Last 12 weeks",month:"Last 12 months"}[C.p],unit=C.p;
  return`<div class="cardh"><div><h3>${C.title}</h3><span class="note" style="margin:0">${C.sub(per,unit)}</span></div><div class="tabs" style="margin:0">${["day","week","month"].map(p=>`<button data-p="${p}" class="${p===C.p?"on":""}">${p[0].toUpperCase()+p.slice(1)}</button>`).join("")}</div></div>
- <div class="actw"><svg viewBox="0 0 ${W} ${H}" data-g="${G}" role="img" aria-label="${C.title} per ${unit}"><defs>${defs}</defs>${grid}<text class="yt" transform="translate(12 ${(T+H-Bt)/2}) rotate(-90)" text-anchor="middle">Count</text>${xl}<text class="xt" x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle">Per ${unit}</text>${lines}<line class="xh" y1="${T}" y2="${H-Bt}"/>${hd}</svg><div class="atip"></div>${all?"":'<div class="actempty">No activity in this period yet.<small>Data will appear here as licenses are issued and updated.</small></div>'}</div>
+ <div class="actw"><svg viewBox="0 0 ${W} ${H}" data-g="${G}" role="img" aria-label="${C.title} per ${unit}"><defs>${defs}</defs>${TY==="donut"?"":grid}<text class="yt"${TY==="donut"?' style="display:none"':""} transform="translate(12 ${(T+H-Bt)/2}) rotate(-90)" text-anchor="middle">Count</text>${TY==="donut"?"":xl}<text class="xt"${TY==="donut"?' style="display:none"':""} x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle">Per ${unit}</text>${lines}<line class="xh" y1="${T}" y2="${H-Bt}"/>${hd}</svg><div class="atip"></div>${all?"":'<div class="actempty">No activity in this period yet.<small>Data will appear here as licenses are issued and updated.</small></div>'}</div>
  <div class="alg">${S.map(z=>`<button class="al${C.off.has(z.k)?" off":""}" data-k="${z.k}" style="--c:${z.c}"><i></i><span>= ${z.l}</span><b data-n="${z.tot}">${z.tot}</b></button>`).join("")}</div>`};
 function bindChart(d,C){const c=$("#"+C.id);if(!c)return;const re=()=>{c.innerHTML=chartHTML(d,C);bindChart(d,C)};
  $$("[data-p]",c).forEach(b=>b.onclick=()=>{C.p=b.dataset.p;re()});
- $$(".al",c).forEach(b=>b.onclick=()=>{const k=b.dataset.k;C.off.has(k)?C.off.delete(k):C.off.add(k);re()});
+ $$(".al",c).forEach(b=>b.onclick=()=>{const k=b.dataset.k;C.off.has(k)?C.off.delete(k):C.off.add(k);saveDC();re()});
  $$("[data-n]",c).forEach(e=>{const t=+e.dataset.n,t0=performance.now(),f=now=>{const p=Math.min(1,(now-t0)/1000);e.textContent=Math.round(t*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)};e.textContent=0;requestAnimationFrame(f)});
- const sv=$("svg",c),tip=$(".atip",c);if(!sv||!tip)return;const G=JSON.parse(sv.dataset.g),xh=$(".xh",sv);
+ const sv=$("svg",c),tip=$(".atip",c);if(!sv||!tip||C.type==="donut")return;const G=JSON.parse(sv.dataset.g),xh=$(".xh",sv);
  const mv=e=>{const r=sv.getBoundingClientRect(),sc=G.W/r.width;let i=Math.round(((e.clientX-r.left)*sc-G.L)/(G.W-G.L-G.R)*(G.n-1));i=Math.max(0,Math.min(G.n-1,i));
   const x=G.L+(G.W-G.L-G.R)*i/(G.n-1);xh.setAttribute("x1",x);xh.setAttribute("x2",x);xh.style.opacity=1;
   $$(".hd",sv).forEach(h=>{const z=G.s.find(q=>q.k===h.dataset.k);h.setAttribute("cx",x);h.setAttribute("cy",G.T+(G.H-G.T-G.B)*(1-z.v[i]/G.ym));h.style.opacity=1});
@@ -832,12 +880,12 @@ function bindChart(d,C){const c=$("#"+C.id);if(!c)return;const re=()=>{c.innerHT
 function dash(){
  const d=load(),R=d.records,now=Date.now(),soon=R.filter(r=>r.expiry&&new Date(r.expiry)>now&&new Date(r.expiry)-now<7776e6).length,c=s=>R.filter(r=>r.status===s).length,unp=d.violations.length;
  const rec=[...R].sort((a,b)=>b.id-a.id).slice(0,6);
- $("#panel").innerHTML=`<div class="card act" id="stacard">${chartHTML(d,CH.sta)}</div>
+ applyDC();$("#panel").innerHTML=`${secCard(d)}<div class="tools" style="justify-content:flex-end;margin-bottom:10px"><button class="btn ghost sm" id="czb">⚙ Customize</button></div>${cz?czHTML():""}${CH.sta.hide?"":`<div class="card act" id="stacard">${chartHTML(d,CH.sta)}</div>`}
  ${pendRev(d).length?revCard(d):""}
- <div class="card act" id="actcard">${chartHTML(d,CH.act)}</div>
+ ${CH.act.hide?"":`<div class="card act" id="actcard">${chartHTML(d,CH.act)}</div>`}
  <div class="card"><div class="cardh"><h3>Recently added</h3><button class="btn sm" id="n">+ Add license</button></div>
  ${rec.length?T(["Username","License No.","Codes","Status",""],rec.map(r=>[`<div class="tn"><span class="av">${esc(ini(r.name))}</span>${esc(r.name)||"Username pending"}</div>`,`<span class="num">${esc(r.licenseNo)||"—"}</span>`,esc((r.restr||[]).join(", "))||"—",`<span class="pill ${esc(r.status)}">${esc(r.status)}</span>`,`<button class="btn ghost sm" data-i="${r.id}">View</button>`])):'<div class="empty">No licenses yet. Add your first one.</div>'}</div>`;
- bindChart(d,CH.sta);bindChart(d,CH.act);bindRev();$("#n").onclick=()=>{tab="add";admin()};$$("[data-i]").forEach(b=>b.onclick=()=>info(+b.dataset.i))}
+ bindChart(d,CH.sta);bindChart(d,CH.act);bindRev();bindCz();bindSec();$("#n").onclick=()=>{tab="add";admin()};$$("[data-i]").forEach(b=>b.onclick=()=>info(+b.dataset.i))}
 function gen(){
  P(`<p class="note" style="margin:0 0 14px">Format: DL + 3 digits, 2 digits, 3 digits. New licenses also get a number automatically.</p><div id="out2"></div>
  <div class="tools"><button class="btn" id="g5">Generate 5 numbers</button><button class="btn ghost" id="gu">Use first in a new license</button></div>`);
@@ -1307,7 +1355,7 @@ function dbPanel(){
   P(`<div style="max-width:360px;margin:30px auto;text-align:center"><div style="font-size:2rem">🔒</div><h3 style="margin:8px 0 4px">Accounts database locked</h3><p class="note" style="margin:0 0 16px">Enter the PIN to view licensee accounts and passwords.</p>
   ${fld("pn","PIN","password",'inputmode="numeric" autocomplete="off"')}<div class="err" id="pne"></div><button class="btn full" id="pgo">Unlock</button></div>`);
   eyes();const go=()=>{const w=Math.ceil((dbLock-Date.now())/1000);if(w>0){$("#pne").textContent="Too many attempts. Try again in "+w+"s.";return}
-   if($("#pn").value===DB_PIN){dbOk=true;dbBad=0;dbPanel()}else{dbBad++;$("#pn").value="";if(dbBad>=3){dbLock=Date.now()+30000;dbBad=0;$("#pne").textContent="Too many attempts. Locked for 30 seconds."}else $("#pne").textContent="Incorrect PIN."}};
+   if($("#pn").value===DB_PIN){dbOk=true;dbBad=0;dbPanel()}else{dbBad++;$("#pn").value="";if(dbBad>=3){dbLock=Date.now()+30000;dbBad=0;secLog("pin","3 wrong database PIN attempts.");$("#pne").textContent="Too many attempts. Locked for 30 seconds."}else $("#pne").textContent="Incorrect PIN."}};
   $("#pgo").onclick=go;$("#pn").onkeydown=e=>{if(e.key==="Enter")go()};setTimeout(()=>{const i=$("#pn");if(i)i.focus()},50);return}
  const d=load(),L=Object.keys(d.accounts).filter(e=>d.accounts[e].role!=="staff"&&d.accounts[e].role!=="officer"),S=Object.keys(d.accounts).filter(e=>d.accounts[e].role==="staff"||d.accounts[e].role==="officer");
  const match=e=>!dbQ||e.includes(dbQ.toLowerCase())||((d.records.find(r=>r.email===e)||{}).name||"").toLowerCase().includes(dbQ.toLowerCase());
@@ -1576,10 +1624,10 @@ const PTILES=[["lic","LICENSING","cert","Details & validity"],["vio","VIOLATIONS
 function dlRecord(r){try{const V=vsOf(r),t=dem(r),L=["TRANSPORTATION OFFICE - LMS PORTAL","DRIVING RECORD","","Holder: "+(r.name||"-"),"License No.: "+(r.licenseNo||"-"),"Type: "+(r.type||"-"),"Status: "+r.status,"Issued: "+(r.issued||"-"),"Expires: "+(r.expiry||"-"),"Codes: "+((r.restr||[]).join(", ")||"-"),"","Demerit points: "+t+" ("+standing(t).l+")","","Violations:",...(V.length?V.map(v=>"- "+v.date+"  "+v.title+" (+"+pts(v)+" pts)"+(v.notes?" - "+v.notes:"")):["None on record."]),"","Generated "+new Date().toLocaleString()];
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([L.join("\n")],{type:"text/plain"}));a.download=(r.licenseNo||"record")+"-driving-record.txt";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast("Driving record downloaded")}catch{toast("Download is not supported in this viewer")}}
 function portal(email){
- const r=load().records.find(x=>x.email===email),tot=r?dem(r):0,st=standing(tot),nm=((r&&r.name)||email.split("@")[0]).toUpperCase();
+ const r=load().records.find(x=>x.email===email),tot=r?dem(r):0,st=standing(tot),nm=((r&&r.name)||email.split("@")[0]);
  const TT={sup:"Support",id:"Digital ID",lic:"Licensing",vio:"Violations",doc:"Documents",pro:"Profile",ren:"Renewal"};
  const stu=r&&r.type==="Student Permit",snote=stu?'<div class="pnote"><b>STUDENT PERMIT</b><br>You may drive only when a companion with a valid driver’s license is seated beside you.</div>':"";
- let body;
+ let body;const canRen=!!r&&!stu&&r.status==="Expired";if(pview==="ren"&&!canRen)pview="lic";
  if(pview==="home"||!TT[pview]){pview="home";
   const sc=r&&(STC[r.status]||STC.Pending);
   body=`<div class="plogoW"><img class="plogo" src="${LOGO}" alt=""></div>
@@ -1591,7 +1639,7 @@ function portal(email){
    if(pview==="id")c=`${eCard(r)}<button class="btn full" id="pdl" style="margin-bottom:14px">Download license</button>${snote}`;
    if(pview==="lic")c=`<button class="pfeat" id="linfo" aria-expanded="false"><span class="pico">${ico("cert",44,2.2)}</span><span class="tx"><b>LICENSE INFORMATION</b><small>Tap to view your ${stu?"permit":"license"} details</small></span><span class="chev">${ico("chev",22,4)}</span></button>
     <div class="lfw" id="lbody"><div class="lfi" style="padding-top:12px">${snote}<div class="pcard"><div class="prow2"><div><small>${stu?"PERMIT":"LICENSE"} NO.</small><div class="num">${esc(r.licenseNo)||"—"}</div></div><span class="pill ${esc(r.status)}">${esc(r.status)}</span></div>${details(r)}</div></div></div>
-    <button class="btn full" id="prenew" style="margin-top:14px">Renew</button>`;
+    <button class="btn full" id="prenew" ${canRen?"":"disabled"} style="margin-top:14px;${canRen?"":"opacity:.45;cursor:not-allowed"}">Renew</button><p class="note" style="text-align:center;margin:8px 0 0">${canRen?"Your license has expired. You can renew it now.":stu?"Student permits cannot be renewed.":"Renewal opens once your license has expired."}</p>`;
    if(pview==="ren")c=renHTML(r);
    if(pview==="vio")c=`<div class="pcard"><div class="cardh"><h3>Demerit points</h3><span class="pill ${st.c}">${tot} pts · ${st.l}</span></div>${meter(tot)}${tlist(r)}</div><a class="btn full settle" href="${SETTLE_URL}" target="_blank" rel="noopener noreferrer">Settle violation</a><p class="note" style="text-align:center;margin:10px 0 0">Opens the T.O Discord settle-violation channel.</p>`;
    if(pview==="doc")c=`<div class="pdoc"><span class="pico">${ico("license",30,2.4)}</span><div><b>${stu?"Student permit":"Driver’s license"} (image)</b><small>PNG of the front and back</small></div><button class="btn sm" id="pdl">Download</button></div>
